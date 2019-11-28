@@ -80,7 +80,7 @@ class HistoryPage(LoggedPage, JsonPage):
             # obj_date = Date(CleanText('./td[1]'), dayfirst=True)
             obj_amount = CleanText(Dict('amount'))
             obj_label = CleanText(Dict('label'))
-            obj_amount = CleanText(Dict('amount'))
+            obj_date = Date(CleanText(Dict('amount')))
             # def obj_amount(self):
             #     return CleanDecimal('./td[3]', replace_dots=True, default=NotAvailable)(self) \
             #            or CleanDecimal('./td[4]', replace_dots=True)(self)
