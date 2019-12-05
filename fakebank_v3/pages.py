@@ -34,6 +34,7 @@ from weboob.browser.filters.standard import CleanText, Date, Regexp, Type, Clean
 from weboob.browser.pages import HTMLPage, LoggedPage, pagination, JsonPage, FormNotFound
 from weboob.capabilities import NotAvailable
 from weboob.capabilities.bank import Account, Transaction
+import requests
 from weboob.exceptions import BrowserUnavailable, BrowserQuestion, BrowserIncorrectPassword, ActionNeeded, ParseError
 from weboob.tools.captcha.virtkeyboard import VirtKeyboardError, MappedVirtKeyboard, SimpleVirtualKeyboard
 from weboob.tools.value import Value
@@ -42,14 +43,6 @@ __all__ = ['ListPage', 'LoginPage', 'HistoryPage']
 
 
 class ListPage(LoggedPage, HTMLPage):
-    def get_the_page(self, action, account_id=None, page=None):
-        form = self.get_form()
-        form['action'] = action
-        if account_id is not None:
-            form['account_id'] = account_id
-        if page is not None:
-            form['page'] = '1'
-        form.submit()
 
     @method
     class iter_accounts(ListElement):
@@ -67,68 +60,44 @@ class ListPage(LoggedPage, HTMLPage):
 
     @pagination
     @method
-    class iter_history(TableElement):
-        head_xpath = '/html/body/div/table/thead'
-        # item_xpath = '//*[@id="history-place"]/tr'
-        item_xpath = '/html/body/div/table/thead/tbody/tr'
-        print("ciao")
+    class iter_history(DictElement):
+        def find_elements(self):
+            data = []
+            item_xpath = '/html/body/script[3]'
+            for el in self.el.xpath(item_xpath):
+
+                transactions = el.text_content()
+                transactions = transactions.split(';')
+
+                for line in transactions:
+                    line_cont = {}
+                    line = line.split(',')
+                    if len(line) != 1:
+                        line_cont['label'] = line[0].strip('\nadd_transaction("')
+                        line_cont['date'] = re.sub(r'"', '', line[1])
+                        line_cont['amount'] = line[2].strip('")')
+                        # print(line_cont)
+                        data.append(line_cont)
+                        yield line_cont
 
         class item(ItemElement):
             klass = Transaction
 
-            obj_date = Date(CleanText('./td[1]'), dayfirst=True)
-            obj_label = CleanText('./td[2]')
-            obj_amount = CleanDecimal('./td[3]', replace_dots=True)
+            obj_amount = CleanDecimal(CleanText(Dict('amount')))
+            obj_label = CleanText(Dict('label'))
+            obj_date = Date(CleanText(Dict('date')))
 
-        # def next_page(self):
-        #     next_page = (u'%s%s' % (self.page.browser.url.split('?', 1)[0], Link(u'//a[text()="▶"]')(self)))
-        #     print(next_page)
-        #     return next_page
+        def next_page(self):
+            # print(Link(u'//a[text()="▶"]')(self))
+            if Link(u'//a[text()="▶"]')(self) is not None:
+                self.page.browser.history_form['page'] = CleanDecimal(Link(u'//a[text()="▶"]'))(self)
+                # print(self.page.browser.history_form)
+                return requests.Request("POST", self.page.url, data=self.page.browser.history_form)
+
 
 
 class HistoryPage(LoggedPage, HTMLPage):
-    def get_the_page(self, action, account_id=None, page=None):
-        form = self.get_form()
-        form['action'] = action
-        if account_id is not None:
-            form['account_id'] = account_id
-        if page is not None:
-            form['page'] = '1'
-        form.submit()
-
-    @pagination
-    @method
-    class iter_history(TableElement):
-        head_xpath = '/html/body/div/table/thead'
-        # item_xpath = '//*[@id="history-place"]/tr'
-        item_xpath = '/html/body/div/table/thead/tbody/tr'
-        print("ciao")
-
-        class item(ItemElement):
-            klass = Transaction
-
-            obj_date = Date(CleanText('./td[1]'), dayfirst=True)
-            obj_label = CleanText('./td[2]')
-            obj_amount = CleanDecimal('./td[3]', replace_dots=True)
-
-    # def get_my_page(self, account_id):
-    #     form = self.get_form()
-    #     form['action'] = 'history'
-    #     form['account_id'] = account_id
-    #     form['page'] = '1'
-    #     form.submit()
-
-    # @pagination
-    # @method
-    # class iter_history(ListElement):
-    #     item_xpath = '//*[@id="history-place"]/tr'
-    #
-    #     class item(ItemElement):
-    #         klass = Transaction
-    #
-    #         obj_date = Date(CleanText('./td[1]'), dayfirst=True)
-    #         obj_label = CleanText('./td[2]')
-    #         obj_amount = CleanDecimal('./td[3]', replace_dots=True, default=NotAvailable)
+    pass
 
 
 class FakebankVirtKeyboard(MappedVirtKeyboard):
@@ -188,4 +157,5 @@ class LoginPage(HTMLPage):
         form = self.get_form(xpath='/html/body/fieldset/form')
         form['login'] = login
         form['code'] = password
+        print(password)
         form.submit()

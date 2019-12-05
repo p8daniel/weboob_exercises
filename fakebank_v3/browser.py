@@ -35,13 +35,24 @@ class Fakebank_V3Browser(LoginBrowser, PagesBrowser):
     login = URL('/~ntome/fake_bank.wsgi/v3/login', LoginPage)
     accounts = URL(r'https://people.lan.budget-insight.com/~ntome/fake_bank.wsgi/v3/app', ListPage)
     account_url = URL(r'https://people.lan.budget-insight.com/~ntome/fake_bank.wsgi/v3/app', HistoryPage)
+
+    history_form={}
+
+
     # account_url = URL(r'https://people.lan.budget-insight.com/~ntome/fake_bank.wsgi/v3/app#', HistoryPage)
 
     @need_login
     def iter_accounts_list(self):
 
-        self.accounts.stay_or_go()
-        self.page.get_the_page(action='accounts')
+        # self.accounts.stay_or_go()
+        # form = self.page.get_form()
+        # form['action'] = 'accounts'
+        # form.submit()
+
+        form = {'action': 'accounts'}
+        self.accounts.go(data=form)
+
+        # self.page.get_the_page(action='accounts')
         return self.page.iter_accounts()
 
     def do_login(self):
@@ -71,8 +82,16 @@ class Fakebank_V3Browser(LoginBrowser, PagesBrowser):
 
     @need_login
     def get_history(self, selected_account):
-        self.account_url.stay_or_go()
-        id = selected_account.id
-        self.page.get_the_page(action='history', account_id=id, page='1')
+        # form = {}
+        history_page = 1
+        # form = self.page.get_form()
+        self.history_form['action'] = 'history'
+        self.history_form['account_id'] = selected_account.id
+        self.history_form['page'] = history_page
+        self.account_url.go(data=self.history_form)
+
+        # form.submit()
+
+        # self.page.get_the_page(action='history', account_id=id, page='1')
         for transaction in self.page.iter_history():
             yield transaction
