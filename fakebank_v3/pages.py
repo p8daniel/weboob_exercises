@@ -98,11 +98,11 @@ class ListPage(LoggedPage, HTMLPage):
 
 class HistoryPage(LoggedPage, HTMLPage):
 
-    # def is_here(self):
-    #     return CleanText('///html/body')(self.doc)
-
     def is_here(self):
-        return bool(self.doc.xpath('/html/body/div/h1'))
+        return CleanText('///html/body')(self.doc)
+
+    # def is_here(self):
+    #     return bool(self.doc.xpath('/html/body/div/h1'))
 
 
     @pagination
