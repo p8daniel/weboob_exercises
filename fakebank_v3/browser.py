@@ -36,8 +36,7 @@ class Fakebank_V3Browser(LoginBrowser, PagesBrowser):
     accounts = URL(r'https://people.lan.budget-insight.com/~ntome/fake_bank.wsgi/v3/app', ListPage)
     account_url = URL(r'https://people.lan.budget-insight.com/~ntome/fake_bank.wsgi/v3/app', HistoryPage)
 
-    history_form={}
-
+    history_form = {}
 
     # account_url = URL(r'https://people.lan.budget-insight.com/~ntome/fake_bank.wsgi/v3/app#', HistoryPage)
 
@@ -82,15 +81,11 @@ class Fakebank_V3Browser(LoginBrowser, PagesBrowser):
 
     @need_login
     def get_history(self, selected_account):
-        # form = {}
-        history_page = 1
-        # form = self.page.get_form()
+
         self.history_form['action'] = 'history'
         self.history_form['account_id'] = selected_account.id
-        self.history_form['page'] = history_page
+        self.history_form['page'] = '1'
         self.account_url.go(data=self.history_form)
-
-        # form.submit()
 
         # self.page.get_the_page(action='history', account_id=id, page='1')
         for transaction in self.page.iter_history():
