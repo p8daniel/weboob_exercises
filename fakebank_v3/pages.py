@@ -157,7 +157,7 @@ class HistoryPage(LoggedPage, HTMLPage):
     @method
     class iter_history(DictElement):
         def find_elements(self):
-            # data = []
+
             item_xpath = '/html/body/script[3]'
             for el in self.el.xpath(item_xpath):
 
@@ -171,8 +171,7 @@ class HistoryPage(LoggedPage, HTMLPage):
                         line_cont['label'] = line[0].strip('\nadd_transaction("')
                         line_cont['date'] = re.sub(r'"', '', line[1])
                         line_cont['amount'] = line[2].strip('")')
-                        # print(line_cont)
-                        # data.append(line_cont)
+
                         yield line_cont
 
         class item(ItemElement):
@@ -183,8 +182,6 @@ class HistoryPage(LoggedPage, HTMLPage):
             obj_date = Date(CleanText(Dict('date')))
 
         def next_page(self):
-            # print(Link(u'//a[text()="▶"]')(self))
             if Link(u'//a[text()="▶"]')(self) is not None:
                 self.page.browser.history_form['page'] = CleanDecimal(Link(u'//a[text()="▶"]'))(self)
-                # print(self.page.browser.history_form)
                 return requests.Request("POST", self.page.url, data=self.page.browser.history_form)
