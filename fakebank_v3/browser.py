@@ -24,7 +24,7 @@ from weboob.browser import PagesBrowser, URL, LoginBrowser, need_login
 from weboob.capabilities.bank import AccountNotFound
 from weboob.exceptions import BrowserIncorrectPassword, ActionNeeded
 
-from .pages import LoginPage, HistoryPage, ListPage
+from .pages import LoginPage, ListPage #,HistoryPage
 
 __all__ = ['Fakebank_V3Browser']
 
@@ -34,11 +34,10 @@ class Fakebank_V3Browser(LoginBrowser, PagesBrowser):
 
     login = URL('/~ntome/fake_bank.wsgi/v3/login', LoginPage)
     accounts = URL(r'https://people.lan.budget-insight.com/~ntome/fake_bank.wsgi/v3/app', ListPage)
-    account_url = URL(r'https://people.lan.budget-insight.com/~ntome/fake_bank.wsgi/v3/app', HistoryPage)
+    # account_url = URL(r'https://people.lan.budget-insight.com/~ntome/fake_bank.wsgi/v3/app', HistoryPage)
 
     history_form = {}
 
-    # account_url = URL(r'https://people.lan.budget-insight.com/~ntome/fake_bank.wsgi/v3/app#', HistoryPage)
 
     @need_login
     def iter_accounts_list(self):
@@ -85,8 +84,8 @@ class Fakebank_V3Browser(LoginBrowser, PagesBrowser):
         self.history_form['action'] = 'history'
         self.history_form['account_id'] = selected_account.id
         self.history_form['page'] = '1'
-        self.account_url.go(data=self.history_form)
+        # self.account_url.go(data=self.history_form)
+        self.accounts.go(data=self.history_form)
 
-        # self.page.get_the_page(action='history', account_id=id, page='1')
         for transaction in self.page.iter_history():
             yield transaction

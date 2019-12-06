@@ -19,31 +19,24 @@
 
 from __future__ import unicode_literals
 
-import base64
-import math
-import random
 import re
 
-from modules.lcl.pages import myXOR
-from modules.s2e.pages import S2eVirtKeyboard, BrowserIncorrectAuthenticationCode
 from six import BytesIO
-from weboob.browser.elements import ListElement, ItemElement, method, TableElement, DictElement
+from weboob.browser.elements import ListElement, ItemElement, method, DictElement
 from weboob.browser.filters.html import Attr, Link
 from weboob.browser.filters.json import Dict
 from weboob.browser.filters.standard import CleanText, Date, Regexp, Type, CleanDecimal
-from weboob.browser.pages import HTMLPage, LoggedPage, pagination, JsonPage, FormNotFound
-from weboob.capabilities import NotAvailable
+from weboob.browser.pages import HTMLPage, LoggedPage, pagination
+
 from weboob.capabilities.bank import Account, Transaction
 import requests
-from weboob.exceptions import BrowserUnavailable, BrowserQuestion, BrowserIncorrectPassword, ActionNeeded, ParseError
-from weboob.tools.captcha.virtkeyboard import VirtKeyboardError, MappedVirtKeyboard, SimpleVirtualKeyboard
-from weboob.tools.value import Value
 
-__all__ = ['ListPage', 'LoginPage', 'HistoryPage']
+from weboob.tools.captcha.virtkeyboard import VirtKeyboardError, MappedVirtKeyboard
+
+__all__ = ['ListPage', 'LoginPage']  # , 'HistoryPage']
 
 
 class ListPage(LoggedPage, HTMLPage):
-
     @method
     class iter_accounts(ListElement):
         item_xpath = '/html/body/div/div'
@@ -62,7 +55,7 @@ class ListPage(LoggedPage, HTMLPage):
     @method
     class iter_history(DictElement):
         def find_elements(self):
-            # data = []
+
             item_xpath = '/html/body/script[3]'
             for el in self.el.xpath(item_xpath):
 
@@ -76,8 +69,7 @@ class ListPage(LoggedPage, HTMLPage):
                         line_cont['label'] = line[0].strip('\nadd_transaction("')
                         line_cont['date'] = re.sub(r'"', '', line[1])
                         line_cont['amount'] = line[2].strip('")')
-                        # print(line_cont)
-                        # data.append(line_cont)
+
                         yield line_cont
 
         class item(ItemElement):
@@ -88,58 +80,12 @@ class ListPage(LoggedPage, HTMLPage):
             obj_date = Date(CleanText(Dict('date')))
 
         def next_page(self):
-            # print(Link(u'//a[text()="▶"]')(self))
             if Link(u'//a[text()="▶"]')(self) is not None:
                 self.page.browser.history_form['page'] = CleanDecimal(Link(u'//a[text()="▶"]'))(self)
-                # print(self.page.browser.history_form)
                 return requests.Request("POST", self.page.url, data=self.page.browser.history_form)
 
 
 
-class HistoryPage(LoggedPage, HTMLPage):
-
-    def is_here(self):
-        return CleanText('///html/body')(self.doc)
-
-    # def is_here(self):
-    #     return bool(self.doc.xpath('/html/body/div/h1'))
-
-
-    @pagination
-    @method
-    class iter_history(DictElement):
-        def find_elements(self):
-            # data = []
-            item_xpath = '/html/body/script[3]'
-            for el in self.el.xpath(item_xpath):
-
-                transactions = el.text_content()
-                transactions = transactions.split(';')
-
-                for line in transactions:
-                    line_cont = {}
-                    line = line.split(',')
-                    if len(line) != 1:
-                        line_cont['label'] = line[0].strip('\nadd_transaction("')
-                        line_cont['date'] = re.sub(r'"', '', line[1])
-                        line_cont['amount'] = line[2].strip('")')
-                        # print(line_cont)
-                        # data.append(line_cont)
-                        yield line_cont
-
-        class item(ItemElement):
-            klass = Transaction
-
-            obj_amount = CleanDecimal(CleanText(Dict('amount')))
-            obj_label = CleanText(Dict('label'))
-            obj_date = Date(CleanText(Dict('date')))
-
-        def next_page(self):
-            # print(Link(u'//a[text()="▶"]')(self))
-            if Link(u'//a[text()="▶"]')(self) is not None:
-                self.page.browser.history_form['page'] = CleanDecimal(Link(u'//a[text()="▶"]'))(self)
-                # print(self.page.browser.history_form)
-                return requests.Request("POST", self.page.url, data=self.page.browser.history_form)
 
 
 class FakebankVirtKeyboard(MappedVirtKeyboard):
@@ -201,3 +147,49 @@ class LoginPage(HTMLPage):
         form['code'] = password
         print(password)
         form.submit()
+
+
+# class HistoryPage(LoggedPage, HTMLPage):
+#
+#     # def is_here(self):
+#     #     return CleanText('///html/body')(self.doc)
+#
+#     def is_here(self):
+#         return bool(self.doc.xpath('/html/body/div/h1'))
+#
+#
+#     @pagination
+#     @method
+#     class iter_history(DictElement):
+#         def find_elements(self):
+#             # data = []
+#             item_xpath = '/html/body/script[3]'
+#             for el in self.el.xpath(item_xpath):
+#
+#                 transactions = el.text_content()
+#                 transactions = transactions.split(';')
+#
+#                 for line in transactions:
+#                     line_cont = {}
+#                     line = line.split(',')
+#                     if len(line) != 1:
+#                         line_cont['label'] = line[0].strip('\nadd_transaction("')
+#                         line_cont['date'] = re.sub(r'"', '', line[1])
+#                         line_cont['amount'] = line[2].strip('")')
+#                         # print(line_cont)
+#                         # data.append(line_cont)
+#                         yield line_cont
+#
+#         class item(ItemElement):
+#             klass = Transaction
+#
+#             obj_amount = CleanDecimal(CleanText(Dict('amount')))
+#             obj_label = CleanText(Dict('label'))
+#             obj_date = Date(CleanText(Dict('date')))
+#
+#         def next_page(self):
+#             # print(Link(u'//a[text()="▶"]')(self))
+#             if Link(u'//a[text()="▶"]')(self) is not None:
+#                 self.page.browser.history_form['page'] = CleanDecimal(Link(u'//a[text()="▶"]'))(self)
+#                 # print(self.page.browser.history_form)
+#                 return requests.Request("POST", self.page.url, data=self.page.browser.history_form)
