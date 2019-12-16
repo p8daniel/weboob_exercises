@@ -36,19 +36,28 @@ class AccuweatherModule(Module, CapWeather):
     VERSION = '1.6'
 
     BROWSER = AccuweatherBrowser
-    # pattern = ''
+
+    pattern = ''
 
     def iter_city_search(self, pattern):
-        return self.browser.iter_city_search(pattern)
+        cities = self.browser.iter_city_search(pattern)
+        self.pattern = pattern
+        return cities
+
+    # def get_city(self, city_id):
+    #     cities = self.browser.iter_city_search(self.pattern)
+    #     for city in cities:
+    #         if city.id == city_id:
+    #             return city
 
     def get_current(self, city_id):
-
-        # cities = self.iter_city_search(self.pattern)
-        # for city in cities:
-        #     if city.id == city_id:
-        #         mycity = city
+        # mycity = self.get_city(city_id)
+        # return self.browser.get_current(city_id)
+        # return self.browser.get_current(mycity)
         return self.browser.get_current(city_id)
 
-    def iter_forecast(self, city_id, test):
-        print(test)
+    def iter_forecast(self, city_id):
+        # mycity = self.get_city(city_id)
+
+        # return self.browser.iter_forecast(mycity)
         return self.browser.iter_forecast(city_id)

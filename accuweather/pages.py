@@ -19,21 +19,22 @@
 
 from __future__ import unicode_literals
 
+import re
+
 from weboob.browser.pages import HTMLPage
 from dateutil.parser import parse as parse_date
 
-from weboob.browser.elements import ItemElement, method, DictElement
+from weboob.browser.elements import ItemElement, method, DictElement, ListElement
 from weboob.browser.pages import JsonPage
-from weboob.browser.filters.standard import Format, DateTime, Env
+from weboob.browser.filters.standard import Format, DateTime, Env, CleanText, Date, Regexp, CleanDecimal
 from weboob.browser.filters.json import Dict
 from weboob.capabilities.weather import Forecast, Current, City, Temperature
+import datetime
 
-__all__ = ['CityPage', 'WeatherPage']
+__all__ = ['CityPage', 'WeatherPage', 'ForecastPage']
 
 
 class CityPage(JsonPage):
-    # ENCODING = 'utf-8'
-
     @method
     class iter_cities(DictElement):
         # item_xpath = '/'
@@ -46,38 +47,84 @@ class CityPage(JsonPage):
             obj_name = Dict('localizedName')
 
             def obj_country(self):
-                # print(Dict('country')(self)['id'].lower())
+                # setattr(self.obj, 'country', Dict('country')(self)['id'].lower())
                 return Dict('country')(self)['id'].lower()
 
 
 class WeatherPage(HTMLPage):
-# class RedirectPage(HTMLPage):
-    REFRESH_MAX = 0
-    print('hello')
+    def on_load(self):
+        pass
+
 
     @method
     class get_current(ItemElement):
         klass = Current
 
-        # obj_date = DateTime(Dict('vt1currentdatetime/dateTime'))
+        def obj_date(self):
+            regex = re.compile(r'[\d]*:[\d]* [A-Z]*')
+            hour = regex.findall(CleanText('//p[@class="module-header sub date"]')(self))[0].strip()
+            d = datetime.datetime.strptime(hour, "%I:%M %p")
+
+            month, day = (CleanText('/html/body/div/div[5]/div[1]/div[1]/div[3]/span'))(self).split(' ')
+            the_date = datetime.datetime.now()
+            # print(datetime.datetime.strptime(month, '%b'))
+            the_date = the_date.replace(day=int(day), month=int(datetime.datetime.strptime(month, '%B').month),
+                                        hour=d.hour, minute=d.minute, second=0, microsecond=0)
+
+            return the_date
+            # return datetime.datetime('')
+
         # obj_id = Env('city_id')
-        # obj_text = Format('%shPa (%s) - humidity %s%% - feels like %s°C - %s',
-        #                   Dict('vt1observation/altimeter'),
-        #                   Dict('vt1observation/barometerTrend'),
-        #                   Dict('vt1observation/humidity'),
-        #                   Dict('vt1observation/feelsLike'),
-        #                   Dict('vt1observation/phrase'))
+
+        def obj_temp(self):
+            temp = CleanDecimal('/html/body/div/div[5]/div[1]/div[1]/div[1]/div/div[1]/div[1]/div[1]/div/p[1]/text()')(
+                self)
+            unit = CleanText(
+                '/html/body/div/div[5]/div[1]/div[1]/div[1]/div/div[1]/div[1]/div[1]/div/p[1]/span/text()')(self)
+            return Temperature(float(temp), unit)
+
+        # obj_text = Format('%s ', CleanText('/html/body/div/div[5]/div[1]/div/div[1]/a[1]/div/div[3]'))
+
+        obj_text = Format('%s mbar - humidity %s%% - feels like %s°C',
+                          CleanDecimal(
+                              CleanText('/html/body/div/div[5]/div[1]/div[1]/div[1]/div/div[2]/div/div[1]/p[4]')),
+                          CleanDecimal(
+                              CleanText('/html/body/div/div[5]/div[1]/div[1]/div[1]/div/div[2]/div/div[1]/p[1]')),
+                          CleanDecimal(
+                              CleanText('/html/body/div/div[5]/div[1]/div[1]/div[1]/div/div[2]/div/div[1]/p[7]')),
+                          # CleanText('/html/body/div/div[5]/div[1]/div[1]/div[1]/div/div[2]/div/div[1]/p[1]'),
+                          # CleanText('/html/body/div/div[5]/div[1]/div[1]/div[1]/div/div[2]/div/div[1]/p[1]')
+                          )
 
         # def obj_temp(self):
+
         #     temp = Dict('vt1observation/temperature')(self)
         #     return Temperature(float(temp), 'C')
 
-    def iter_forecast(self):
-        raise NotImplemented
-        # forecast = self.doc['vt1dailyForecast']
-        # for i in range(1, len(forecast['dayOfWeek'])):
-        #     date = parse_date(forecast['validDate'][1])
-        #     tlow = float(forecast['day']['temperature'][i])
-        #     thigh = tlow
-        #     text = forecast['day']['narrative'][i]
-        #     yield Forecast(date, tlow, thigh, text, 'C')
+
+class ForecastPage(HTMLPage):
+    @method
+    class iter_forecast(ListElement):
+        item_xpath = '/html/body/div/div[5]/div[1]/div/div[1]/a'
+
+        class item(ItemElement):
+            klass = Forecast
+
+            def obj_date(self):
+                regex = re.compile(r'[\d]*/[\d]*')
+                mystring = regex.findall(CleanText('./div/p[2]/text()')(self))[0].strip()
+                d = datetime.datetime.strptime(mystring, '%m/%d')
+                the_date = datetime.datetime.today().replace(month=d.month, day=d.day)
+                return the_date.date()
+
+            def obj_low(self):
+                return Temperature(CleanDecimal('./div[2]/span[1]/text()')(self))
+
+            def obj_high(self):
+                return Temperature(CleanDecimal('./div[2]/span[2]/text()')(self))
+
+            def obj_text(self):
+                return CleanText('./span/text()')(self)
+
+            def obj_id(self):
+                return CleanText('./div/p[1]/text()')(self)
